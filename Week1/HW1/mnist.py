@@ -5,8 +5,9 @@ import torchvision
 import torchvision.transforms as transforms
 
 batch_size = 64
-learning_rate = 0.001
-num_epochs = 10
+LR = 0.001
+epochs = 10
+DOWNLOAD_MNIST = True
 
 # image transform
 transform = transforms.Compose([
@@ -15,12 +16,11 @@ transform = transforms.Compose([
 ])
 
 # MNIST dataset
-train_dataset = torchvision.datasets.MNIST(root='./data', train=True, transform=transform, download=True)
-train_loader = torch.utils.data.DataLoader(dataset=train_dataset, batch_size=batch_size, shuffle=True)
+train_data = torchvision.datasets.MNIST(root='./mnist', train=True, transform=transform, download=DOWNLOAD_MNIST)
+train_loader = torch.utils.data.DataLoader(dataset=train_data, batch_size=batch_size, shuffle=True, num_workers=2)
 
-test_dataset = torchvision.datasets.MNIST(root='./data', train=False, transform=transform, download=True)
-test_loader = torch.utils.data.DataLoader(dataset=test_dataset, batch_size=batch_size, shuffle=False)
-
+test_data = torchvision.datasets.MNIST(root='./mnist', train=False, transform=transform)
+test_loader = torch.utils.data.DataLoader(dataset=test_data, batch_size=batch_size, shuffle=False, num_workers=2)
 
 class CNN(nn.Module):
     def __init__(self):
@@ -44,17 +44,17 @@ class CNN(nn.Module):
         output = self.out(x)
         return output
 
-model = CNN()
-criterion = nn.CrossEntropyLoss()
-optimizer = optim.Adam(model.parameters(), lr=learning_rate)
+cnn = CNN()
+loss_func = nn.CrossEntropyLoss()
+optimizer  = torch.optim.Adam(cnn.parameters(), lr = LR)
 
-for epoch in range(num_epochs):
-    model.train()
+for epoch in range(epochs):
+    cnn.train()
     running_loss = 0.0
     for i, (images, labels) in enumerate(train_loader):
 
-        outputs = model(images)
-        loss = criterion(outputs, labels)
+        outputs = cnn(images)
+        loss = loss_func(outputs, labels)
         
         optimizer.zero_grad()
         loss.backward()
@@ -62,21 +62,21 @@ for epoch in range(num_epochs):
         
         running_loss += loss.item()
         if (i + 1) % 100 == 0:  
-            print(f'Epoch {epoch + 1}/{num_epochs}, Batch {i + 1}/{len(train_loader)}, Loss: {loss.item():.4f}')
+            print(f'Epoch {epoch + 1}/{epochs}, Batch {i + 1}/{len(train_loader)}, Loss: {loss.item():.4f}')
     
 
-    model.eval()
+    cnn.eval()
     correct = 0
     total = 0
     with torch.no_grad():
         for images, labels in test_loader:
-            outputs = model(images)
+            outputs = cnn(images)
             _, predicted = torch.max(outputs.data, 1)
             total += labels.size(0)
             correct += (predicted == labels).sum().item()
     
     test_acc = 100 * correct / total
-    print(f'Epoch {epoch + 1}/{num_epochs}, Test Accuracy: {test_acc:.2f}%')
+    print(f'Epoch {epoch + 1}/{epochs}, Test Accuracy: {test_acc:.2f}%')
     
 print('Training completed.')
 
